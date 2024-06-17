@@ -42,27 +42,27 @@ __END_DECLS
 
 @interface USBDeviceRequesterAppDelegate ()
 
+@property (assign) IBOutlet NSWindow	*window;
+@property (assign) IBOutlet NSTableView *deviceTable;
+@property (assign) IBOutlet NSTextField *deviceVID;
+@property (assign) IBOutlet NSTextField *devicePID;
+@property (assign) IBOutlet NSTextField *bRequest;
+@property (assign) IBOutlet NSTextField *wValue;
+@property (assign) IBOutlet NSTextField *wIndex;
+@property (assign) IBOutlet NSTextField *dataSize;
+@property (assign) IBOutlet NSTextField	*memData;
+@property (assign) IBOutlet NSBox	*requestBox;
+@property (assign) IBOutlet NSButton	*setButton;
+@property (assign) IBOutlet NSButton	*getButton;
+@property (assign) IBOutlet NSButton	*resetButton;
+@property (assign) IBOutlet NSPopUpButton *requestType;
+@property (assign) IBOutlet NSPopUpButton *requestRecipient;
+
 @property(strong) NSMutableArray *deviceArray;
 
 @end
 
 @implementation USBDeviceRequesterAppDelegate
-
-@synthesize window;
-@synthesize deviceTable;
-@synthesize deviceVID;
-@synthesize devicePID;
-@synthesize requestType;
-@synthesize requestRecipient;
-@synthesize bRequest;
-@synthesize wValue;
-@synthesize wIndex;
-@synthesize memData;
-@synthesize requestBox;
-@synthesize setButton;
-@synthesize getButton;
-@synthesize resetButton;
-@synthesize dataSize;
 
 #pragma mark ######### static wrappers #########
 
@@ -147,7 +147,7 @@ staticDeviceRemoved (void *refCon, io_iterator_t iterator)
         [self.deviceArray addObject: dict];
     }
 
-	[deviceTable reloadData];
+    [self.deviceTable reloadData];
 }
 
 - (void) deviceRemoved: (io_iterator_t) iterator
@@ -172,9 +172,9 @@ staticDeviceRemoved (void *refCon, io_iterator_t iterator)
         IOObjectRelease(serviceObject);
     }
 
-    [deviceTable reloadData];
+    [self.deviceTable reloadData];
 
-    if ([deviceTable selectedRow] < 0)
+    if ([self.deviceTable selectedRow] < 0)
     {
         [self setDeviceEnabled: NO];
     }
@@ -245,23 +245,24 @@ staticDeviceRemoved (void *refCon, io_iterator_t iterator)
     return [self.deviceArray count];
 }
 
-- (void)setDeviceEnabled: (BOOL)en
+- (void)setDeviceEnabled:(BOOL)anEnabledFlag
 {
-	[requestType setEnabled: en];
-	[requestRecipient setEnabled: en];
-	[bRequest setEnabled: en];
-	[wIndex setEnabled: en];
-	[wValue setEnabled: en];
-	[dataSize setEnabled: en];
-	[setButton setEnabled: en];
-	[getButton setEnabled: en];
-	[resetButton setEnabled: en];
-	[memData setEditable: en];
-	
-	if (!en) {
-		[deviceVID setStringValue: @"-"];
-		[devicePID setStringValue: @"-"];
-	}
+    self.requestType.enabled =      anEnabledFlag;
+    self.requestRecipient.enabled = anEnabledFlag;
+    self.bRequest.enabled =         anEnabledFlag;
+    self.wIndex.enabled =           anEnabledFlag;
+    self.wValue.enabled =           anEnabledFlag;
+    self.dataSize.enabled =         anEnabledFlag;
+    self.setButton.enabled =        anEnabledFlag;
+    self.getButton.enabled =        anEnabledFlag;
+    self.resetButton.enabled =      anEnabledFlag;
+    self.memData.enabled =          anEnabledFlag;
+
+    if (!anEnabledFlag)
+    {
+        [self.deviceVID setStringValue: @"-"];
+        [self.devicePID setStringValue: @"-"];
+    }
 }
 
 #pragma mark ############ IBActions #############
@@ -279,8 +280,8 @@ staticDeviceRemoved (void *refCon, io_iterator_t iterator)
     [self setDeviceEnabled: YES];
 
     NSDictionary *dict = [self.deviceArray objectAtIndex: selectedRow];
-    [deviceVID setStringValue: [dict valueForKey: @"VID"]];
-    [devicePID setStringValue: [dict valueForKey: @"PID"]];
+    [self.deviceVID setStringValue: [dict valueForKey: @"VID"]];
+    [self.devicePID setStringValue: [dict valueForKey: @"PID"]];
 }
 
 
@@ -288,26 +289,28 @@ staticDeviceRemoved (void *refCon, io_iterator_t iterator)
 
 - (void)applicationDidFinishLaunching:(NSNotification *)aNotification
 {
-	[memData setFont: [NSFont fontWithName: @"Courier New" size: 11]];
-	[self listenForDevices];
-	[self setDeviceEnabled: NO];
+    [self.memData setFont: [NSFont fontWithName: @"Courier New" size: 11]];
+    [self listenForDevices];
+    [self setDeviceEnabled:NO];
 }
 
-- (UInt) convertData: (unsigned char *) dest maxLength: (UInt) len
+- (UInt)convertData:(unsigned char *)dest maxLength:(UInt)len
 {
-	char tmp[1024], *next;
-	NSInteger n = 0;
+    char tmp[1024], *next;
+    UInt n = 0;
 
-	[[memData stringValue] getCString: tmp
-				maxLength: sizeof(tmp)
-				 encoding: NSASCIIStringEncoding];
-        next = strtok(tmp, " ");
-        while (next && n < len) {
-		dest[n++] = strtol(next, NULL, 0);
-		next = strtok(NULL, " ");
-	}
+    [[self.memData stringValue] getCString: tmp
+                maxLength: sizeof(tmp)
+                encoding: NSASCIIStringEncoding];
 
-	return n;
+    next = strtok(tmp, " ");
+    while (next && n < len)
+    {
+        dest[n++] = strtol(next, NULL, 0);
+        next = strtok(NULL, " ");
+    }
+
+    return n;
 }
 
 - (NSInteger) convertToInt: (NSString *) string
@@ -327,59 +330,66 @@ staticDeviceRemoved (void *refCon, io_iterator_t iterator)
 - (void) makeRequestToDevice: (IOUSBDeviceInterface **) dev
        directionHostToDevice: (BOOL) directionHostToDevice
 {
-	HRESULT kr;
-	IOUSBDevRequest req;
-	UInt count;
-	unsigned char tmp[1024];
-	
-	if (directionHostToDevice) {
-		count = [self convertData: tmp
-				maxLength: sizeof(tmp)];
-		[dataSize setIntValue: count];
-	} else {
-		count = [dataSize intValue];
-		[memData setStringValue: @""];
-	}
+    HRESULT kr;
+    IOUSBDevRequest req;
+    UInt count;
+    unsigned char tmp[1024];
 
-	req.bmRequestType = USBmakebmRequestType(directionHostToDevice ? kUSBOut: kUSBIn,
-						 [requestType indexOfSelectedItem],
-						 [requestRecipient indexOfSelectedItem]);
-	req.bRequest = [self convertToInt: [bRequest stringValue]];
-	req.wValue = EndianS16_NtoL([self convertToInt: [wValue stringValue]]);
-	req.wIndex = EndianS16_NtoL([self convertToInt: [wIndex stringValue]]);
-	req.wLength = EndianS16_NtoL(count);
-	req.pData = tmp;
+    if (directionHostToDevice)
+    {
+        count = [self convertData: tmp maxLength: sizeof(tmp)];
+        [self.dataSize setIntValue: count];
+    }
+    else
+    {
+        count = [self.dataSize intValue];
+        [self.memData setStringValue: @""];
+    }
 
-	kr = (*dev)->DeviceRequest(dev, &req);
+    req.bmRequestType = USBmakebmRequestType(directionHostToDevice ? kUSBOut: kUSBIn,
+                        [self.requestType indexOfSelectedItem],
+                        [self.requestRecipient indexOfSelectedItem]);
 
-	if (kr)
+    req.bRequest = [self convertToInt:self.bRequest.stringValue];
+    req.wValue = EndianS16_NtoL([self convertToInt:self.wValue.stringValue]);
+    req.wIndex = EndianS16_NtoL([self convertToInt:self.wIndex.stringValue]);
+    req.wLength = EndianS16_NtoL(count);
+    req.pData = tmp;
+
+    kr = (*dev)->DeviceRequest(dev, &req);
+
+    if (kr)
+    {
 		NSBeginCriticalAlertSheet(@"Request failed",
 					  @"Oh, well.",
 					  nil, nil,
 					  [NSApp mainWindow],
 					  nil, nil, nil, NULL,
 					  @"OS reported error code %08x", kr);
+    }
 
-	if (!directionHostToDevice) {
+    if (!directionHostToDevice)
+    {
 		char tmpstr[(5 * count) + 1];
 		char subtmp[6];
 		NSInteger i;
 
 		memset(tmpstr, 0, sizeof(tmpstr));
 		memset(subtmp, 0, sizeof(subtmp));
-		for (i = 0; i < count; i++) {
+		for (i = 0; i < count; i++)
+        {
 			snprintf(subtmp, 6, "0x%02x ", tmp[i]);
 			strncat(tmpstr, subtmp, 6);
 		}
-		
-		[memData setStringValue: [NSString stringWithCString: tmpstr
+
+		[self.memData setStringValue: [NSString stringWithCString: tmpstr
 							    encoding: NSASCIIStringEncoding]];
 	}
 }
 
 - (void)makeRequestToSelectedDevice:(BOOL)outputDirection
 {
-    NSInteger selectedRow = [deviceTable selectedRow];
+    NSInteger selectedRow = [self.deviceTable selectedRow];
     NSDictionary *dict = [self.deviceArray objectAtIndex: selectedRow];
     IOUSBDeviceInterface **dev = [[dict valueForKey: @"dev"] pointerValue];
 
@@ -399,7 +409,7 @@ staticDeviceRemoved (void *refCon, io_iterator_t iterator)
 
 - (IBAction) resetDevice: (id) sender
 {
-    NSInteger selectedRow = [deviceTable selectedRow];
+    NSInteger selectedRow = [self.deviceTable selectedRow];
     NSDictionary *dict = [self.deviceArray objectAtIndex:selectedRow];
     IOUSBDeviceInterface187 **dev = [[dict valueForKey: @"dev"] pointerValue];
     OSStatus kr;

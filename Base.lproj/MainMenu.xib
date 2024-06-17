@@ -837,7 +837,7 @@
                                         <font key="font" metaFont="smallSystem"/>
                                     </buttonCell>
                                     <connections>
-                                        <action selector="resetDevice:" target="-1" id="641"/>
+                                        <action selector="resetDevice:" target="494" id="XM7-R8-9Dr"/>
                                     </connections>
                                 </button>
                                 <button imageHugsTitle="YES" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="576">
