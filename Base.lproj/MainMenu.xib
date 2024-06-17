@@ -860,7 +860,6 @@
                                         <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                                     </textFieldCell>
                                     <connections>
-                                        <action selector="dataChanged:" target="494" id="605"/>
                                         <outlet property="delegate" destination="494" id="604"/>
                                     </connections>
                                 </textField>
