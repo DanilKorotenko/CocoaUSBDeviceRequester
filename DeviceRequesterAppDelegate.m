@@ -40,6 +40,12 @@ __END_DECLS
 
 #import "DeviceRequesterAppDelegate.h"
 
+@interface USBDeviceRequesterAppDelegate ()
+
+@property(strong) NSMutableArray *deviceArray;
+
+@end
+
 @implementation USBDeviceRequesterAppDelegate
 
 @synthesize window;
@@ -138,35 +144,40 @@ staticDeviceRemoved (void *refCon, io_iterator_t iterator)
 		[dict setObject: [NSNumber numberWithInt: serviceObject]
 			 forKey: @"service"];
 
-		[deviceArray addObject: dict];
-	}
+        [self.deviceArray addObject: dict];
+    }
 
 	[deviceTable reloadData];
 }
 
 - (void) deviceRemoved: (io_iterator_t) iterator
 {
-	io_service_t serviceObject;
+    io_service_t serviceObject;
 
-	while ((serviceObject = IOIteratorNext(iterator))) {
-		NSEnumerator *enumerator = [deviceArray objectEnumerator];
-		printf("%s(): device removed %d.\n", __func__, (int) serviceObject);
-		NSDictionary *dict;
+    while ((serviceObject = IOIteratorNext(iterator)))
+    {
+        NSEnumerator *enumerator = [self.deviceArray objectEnumerator];
+        printf("%s(): device removed %d.\n", __func__, (int) serviceObject);
+        NSDictionary *dict;
 
-		while (dict = [enumerator nextObject]) {
-			if ((io_service_t) [[dict valueForKey: @"service"] intValue] == serviceObject) {
-				[deviceArray removeObject: dict];
-				break;
-			}
-		}
+        while (dict = [enumerator nextObject])
+        {
+            if ((io_service_t) [[dict valueForKey: @"service"] intValue] == serviceObject)
+            {
+                [self.deviceArray removeObject: dict];
+                break;
+            }
+        }
 
-		IOObjectRelease(serviceObject);
-	}
+        IOObjectRelease(serviceObject);
+    }
 
-	[deviceTable reloadData];
+    [deviceTable reloadData];
 
-	if ([deviceTable selectedRow] < 0)
-		[self setDeviceEnabled: NO];
+    if ([deviceTable selectedRow] < 0)
+    {
+        [self setDeviceEnabled: NO];
+    }
 }
 
 #pragma mark ######### GUI related #########
@@ -176,7 +187,7 @@ staticDeviceRemoved (void *refCon, io_iterator_t iterator)
     OSStatus ret;
     CFRunLoopSourceRef runLoopSource;
 
-    deviceArray = [[NSMutableArray alloc] initWithCapacity: 0];
+    self.deviceArray = [[NSMutableArray alloc] initWithCapacity: 0];
 
     classToMatch = IOServiceMatching(kIOUSBDeviceClassName);
     if (!classToMatch)
@@ -222,20 +233,19 @@ staticDeviceRemoved (void *refCon, io_iterator_t iterator)
 {
 }
 
-- (id)tableView:(NSTableView *)aTableView
-objectValueForTableColumn:(NSTableColumn *)col
-	    row:(NSInteger)rowIndex
+- (id)tableView:(NSTableView *)aTableView objectValueForTableColumn:(NSTableColumn *)col
+    row:(NSInteger)rowIndex
 {
-	NSDictionary *dict = [deviceArray objectAtIndex: rowIndex];
-	return [dict valueForKey: [col identifier]];
+    NSDictionary *dict = [self.deviceArray objectAtIndex: rowIndex];
+    return [dict valueForKey:[col identifier]];
 }
 
 - (NSInteger) numberOfRowsInTableView:(NSTableView *)aTableView
 {
-	return [deviceArray count];
+    return [self.deviceArray count];
 }
 
-- (void) setDeviceEnabled: (BOOL) en
+- (void)setDeviceEnabled: (BOOL)en
 {
 	[requestType setEnabled: en];
 	[requestRecipient setEnabled: en];
@@ -256,20 +266,21 @@ objectValueForTableColumn:(NSTableColumn *)col
 
 #pragma mark ############ IBActions #############
 
-- (IBAction) selectDevice: (id) sender
+- (IBAction)selectDevice:(id)sender
 {
-	NSInteger selectedRow = [sender selectedRow];
+    NSInteger selectedRow = [sender selectedRow];
 
-	if (selectedRow < 0) {
-		[self setDeviceEnabled: NO];
-		return;
-	}
+    if (selectedRow < 0)
+    {
+        [self setDeviceEnabled: NO];
+        return;
+    }
 
-	[self setDeviceEnabled: YES];
+    [self setDeviceEnabled: YES];
 
-	NSDictionary *dict = [deviceArray objectAtIndex: selectedRow];
-	[deviceVID setStringValue: [dict valueForKey: @"VID"]];
-	[devicePID setStringValue: [dict valueForKey: @"PID"]];
+    NSDictionary *dict = [self.deviceArray objectAtIndex: selectedRow];
+    [deviceVID setStringValue: [dict valueForKey: @"VID"]];
+    [devicePID setStringValue: [dict valueForKey: @"PID"]];
 }
 
 
@@ -366,19 +377,19 @@ objectValueForTableColumn:(NSTableColumn *)col
 	}
 }
 
-- (void) makeRequestToSelectedDevice: (BOOL) outputDirection
+- (void)makeRequestToSelectedDevice:(BOOL)outputDirection
 {
-	NSInteger selectedRow = [deviceTable selectedRow];
-	NSDictionary *dict = [deviceArray objectAtIndex: selectedRow];
-	IOUSBDeviceInterface **dev = [[dict valueForKey: @"dev"] pointerValue];
-	
-	[self makeRequestToDevice: dev
-	    directionHostToDevice: outputDirection];	
+    NSInteger selectedRow = [deviceTable selectedRow];
+    NSDictionary *dict = [self.deviceArray objectAtIndex: selectedRow];
+    IOUSBDeviceInterface **dev = [[dict valueForKey: @"dev"] pointerValue];
+
+    [self makeRequestToDevice: dev
+        directionHostToDevice: outputDirection];
 }
 
 - (IBAction) getData: (id) sender
 {
-	[self makeRequestToSelectedDevice: NO];
+    [self makeRequestToSelectedDevice: NO];
 }
 
 - (IBAction) setData: (id) sender
@@ -388,37 +399,43 @@ objectValueForTableColumn:(NSTableColumn *)col
 
 - (IBAction) resetDevice: (id) sender
 {
-	NSInteger selectedRow = [deviceTable selectedRow];
-	NSDictionary *dict = [deviceArray objectAtIndex: selectedRow];
-	IOUSBDeviceInterface187 **dev = [[dict valueForKey: @"dev"] pointerValue];
-	OSStatus kr;
+    NSInteger selectedRow = [deviceTable selectedRow];
+    NSDictionary *dict = [self.deviceArray objectAtIndex:selectedRow];
+    IOUSBDeviceInterface187 **dev = [[dict valueForKey: @"dev"] pointerValue];
+    OSStatus kr;
 
-	kr = (*dev)->USBDeviceOpen(dev);
-	if (kr)
-		NSBeginCriticalAlertSheet(@"Exclusive Device open failed",
-					  @"Oh, well.",
-					  nil, nil,
-					  [NSApp mainWindow],
-					  nil, nil, nil, NULL,
-					  @"OS reported error code %08x", kr);
-	
-	kr = (*dev)->ResetDevice(dev);
-	if (kr)
-		NSBeginCriticalAlertSheet(@"Device reset failed",
-					  @"Oh, well.",
-					  nil, nil,
-					  [NSApp mainWindow],
-					  nil, nil, nil, NULL,
-					  @"OS reported error code %08x", kr);
+    kr = (*dev)->USBDeviceOpen(dev);
+    if (kr)
+    {
+        NSBeginCriticalAlertSheet(@"Exclusive Device open failed",
+                    @"Oh, well.",
+                    nil, nil,
+                    [NSApp mainWindow],
+                    nil, nil, nil, NULL,
+                    @"OS reported error code %08x", kr);
+    }
 
-	kr = (*dev)->USBDeviceReEnumerate(dev, 0);
-	if (kr)
-		NSBeginCriticalAlertSheet(@"USBDeviceReEnumerate failed",
-					  @"Oh, well.",
-					  nil, nil,
-					  [NSApp mainWindow],
-					  nil, nil, nil, NULL,
-					  @"OS reported error code %08x", kr);
+    kr = (*dev)->ResetDevice(dev);
+    if (kr)
+    {
+        NSBeginCriticalAlertSheet(@"Device reset failed",
+                    @"Oh, well.",
+                    nil, nil,
+                    [NSApp mainWindow],
+                    nil, nil, nil, NULL,
+                    @"OS reported error code %08x", kr);
+    }
+
+    kr = (*dev)->USBDeviceReEnumerate(dev, 0);
+    if (kr)
+    {
+        NSBeginCriticalAlertSheet(@"USBDeviceReEnumerate failed",
+                    @"Oh, well.",
+                    nil, nil,
+                    [NSApp mainWindow],
+                    nil, nil, nil, NULL,
+                    @"OS reported error code %08x", kr);
+    }
 }
 
 @end

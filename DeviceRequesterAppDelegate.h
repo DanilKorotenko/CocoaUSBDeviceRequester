@@ -1,6 +1,7 @@
 #import <Cocoa/Cocoa.h>
 
-@interface USBDeviceRequesterAppDelegate : NSObject <NSApplicationDelegate> {
+@interface USBDeviceRequesterAppDelegate : NSObject <NSApplicationDelegate>
+{
 	NSWindow	*window;
 	NSTableView	*deviceTable;
 	NSTextField	*deviceVID;
@@ -17,7 +18,6 @@
 	NSButton	*getButton;
 	NSButton	*resetButton;
 
-	NSMutableArray			*deviceArray;
 	io_iterator_t			gNewDeviceAddedIter;
 	io_iterator_t			gNewDeviceRemovedIter;
 	IONotificationPortRef		gNotifyPort;
