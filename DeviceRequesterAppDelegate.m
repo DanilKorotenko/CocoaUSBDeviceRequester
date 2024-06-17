@@ -171,58 +171,46 @@ staticDeviceRemoved (void *refCon, io_iterator_t iterator)
 
 #pragma mark ######### GUI related #########
 
-- (void) listenForDevices
+- (void)listenForDevices
 {
-	OSStatus ret;
-	CFRunLoopSourceRef runLoopSource;
-	mach_port_t masterPort;
-	kern_return_t kernResult;
+    OSStatus ret;
+    CFRunLoopSourceRef runLoopSource;
 
-	deviceArray = [[NSMutableArray alloc] initWithCapacity: 0];
+    deviceArray = [[NSMutableArray alloc] initWithCapacity: 0];
 
-	// Returns the mach port used to initiate communication with IOKit.
-	kernResult = IOMasterPort(MACH_PORT_NULL, &masterPort);
+    classToMatch = IOServiceMatching(kIOUSBDeviceClassName);
+    if (!classToMatch)
+    {
+        printf("%s(): IOServiceMatching returned a NULL dictionary.\n", __func__);
+        return;
+    }
 
-	if (kernResult != kIOReturnSuccess) {
-		printf("%s(): IOMasterPort() returned %08x\n", __func__, kernResult);
-		return;
-	}
+    // increase the reference count by 1 since die dict is used twice.
+    CFRetain(classToMatch);
 
-	classToMatch = IOServiceMatching(kIOUSBDeviceClassName);
-	if (!classToMatch) {
-		printf("%s(): IOServiceMatching returned a NULL dictionary.\n", __func__);
-		return;
-	}
+    gNotifyPort = IONotificationPortCreate(kIOMainPortDefault);
+    runLoopSource = IONotificationPortGetRunLoopSource(gNotifyPort);
+    CFRunLoopAddSource(CFRunLoopGetCurrent(), runLoopSource, kCFRunLoopDefaultMode);
 
-	// increase the reference count by 1 since die dict is used twice.
-	CFRetain(classToMatch);
+    ret = IOServiceAddMatchingNotification(gNotifyPort,
+                        kIOFirstMatchNotification,
+                        classToMatch,
+                        staticDeviceAdded,
+                        self,
+                        &gNewDeviceAddedIter);
 
-	gNotifyPort = IONotificationPortCreate(masterPort);
-	runLoopSource = IONotificationPortGetRunLoopSource(gNotifyPort);
-	CFRunLoopAddSource(CFRunLoopGetCurrent(), runLoopSource, kCFRunLoopDefaultMode);
+    // Iterate once to get already-present devices and arm the notification
+    [self deviceAdded: gNewDeviceAddedIter];
 
-	ret = IOServiceAddMatchingNotification(gNotifyPort,
-					       kIOFirstMatchNotification,
-					       classToMatch,
-					       staticDeviceAdded,
-					       self,
-					       &gNewDeviceAddedIter);
+    ret = IOServiceAddMatchingNotification(gNotifyPort,
+                        kIOTerminatedNotification,
+                        classToMatch,
+                        staticDeviceRemoved,
+                        self,
+                        &gNewDeviceRemovedIter);
 
-	// Iterate once to get already-present devices and arm the notification
-	[self deviceAdded: gNewDeviceAddedIter];
-
-	ret = IOServiceAddMatchingNotification(gNotifyPort,
-					       kIOTerminatedNotification,
-					       classToMatch,
-					       staticDeviceRemoved,
-					       self,
-					       &gNewDeviceRemovedIter);
-
-	// Iterate once to get already-present devices and arm the notification
-	[self deviceRemoved : gNewDeviceRemovedIter];
-
-	// done with the masterport
-	mach_port_deallocate(mach_task_self(), masterPort);
+    // Iterate once to get already-present devices and arm the notification
+    [self deviceRemoved : gNewDeviceRemovedIter];
 }
 
 #pragma mark ######### table view data source protocol ############
