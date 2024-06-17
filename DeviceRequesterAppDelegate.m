@@ -327,8 +327,8 @@ staticDeviceRemoved (void *refCon, io_iterator_t iterator)
 	return strtol(tmp, NULL, 10);
 }
 
-- (void) makeRequestToDevice: (IOUSBDeviceInterface **) dev
-       directionHostToDevice: (BOOL) directionHostToDevice
+- (void)makeRequestToDevice:(IOUSBDeviceInterface **)dev
+       directionHostToDevice:(BOOL)directionHostToDevice
 {
     HRESULT kr;
     IOUSBDevRequest req;
@@ -360,12 +360,14 @@ staticDeviceRemoved (void *refCon, io_iterator_t iterator)
 
     if (kr)
     {
-		NSBeginCriticalAlertSheet(@"Request failed",
-					  @"Oh, well.",
-					  nil, nil,
-					  [NSApp mainWindow],
-					  nil, nil, nil, NULL,
-					  @"OS reported error code %08x", kr);
+        NSAlert *alert = [[NSAlert alloc] init];
+        alert.messageText = @"Request failed";
+        alert.informativeText = [NSString stringWithFormat:@"OS reported error code %08x", kernelReturn];
+        [alert beginSheetModalForWindow:[NSApp mainWindow] completionHandler:
+            ^(NSModalResponse returnCode)
+            {
+
+            }];
     }
 
     if (!directionHostToDevice)
@@ -393,58 +395,63 @@ staticDeviceRemoved (void *refCon, io_iterator_t iterator)
     NSDictionary *dict = [self.deviceArray objectAtIndex: selectedRow];
     IOUSBDeviceInterface **dev = [[dict valueForKey: @"dev"] pointerValue];
 
-    [self makeRequestToDevice: dev
-        directionHostToDevice: outputDirection];
+    [self makeRequestToDevice:dev directionHostToDevice:outputDirection];
 }
 
-- (IBAction) getData: (id) sender
+- (IBAction)getData:(id)sender
 {
-    [self makeRequestToSelectedDevice: NO];
+    [self makeRequestToSelectedDevice:NO];
 }
 
-- (IBAction) setData: (id) sender
+- (IBAction)setData:(id)sender
 {
-	[self makeRequestToSelectedDevice: YES];
+    [self makeRequestToSelectedDevice:YES];
 }
 
-- (IBAction) resetDevice: (id) sender
+- (IBAction)resetDevice:(id)sender
 {
     NSInteger selectedRow = [self.deviceTable selectedRow];
     NSDictionary *dict = [self.deviceArray objectAtIndex:selectedRow];
     IOUSBDeviceInterface187 **dev = [[dict valueForKey: @"dev"] pointerValue];
-    OSStatus kr;
 
-    kr = (*dev)->USBDeviceOpen(dev);
-    if (kr)
+    OSStatus kernelReturn = (*dev)->USBDeviceOpen(dev);
+    if (kernelReturn)
     {
-        NSBeginCriticalAlertSheet(@"Exclusive Device open failed",
-                    @"Oh, well.",
-                    nil, nil,
-                    [NSApp mainWindow],
-                    nil, nil, nil, NULL,
-                    @"OS reported error code %08x", kr);
+        NSAlert *alert = [[NSAlert alloc] init];
+        alert.messageText = @"Exclusive Device open failed";
+        alert.informativeText = [NSString stringWithFormat:@"OS reported error code %08x", kernelReturn];
+        [alert beginSheetModalForWindow:[NSApp mainWindow] completionHandler:
+            ^(NSModalResponse returnCode)
+            {
+
+            }];
+        return;
     }
 
-    kr = (*dev)->ResetDevice(dev);
-    if (kr)
+    kernelReturn = (*dev)->ResetDevice(dev);
+    if (kernelReturn)
     {
-        NSBeginCriticalAlertSheet(@"Device reset failed",
-                    @"Oh, well.",
-                    nil, nil,
-                    [NSApp mainWindow],
-                    nil, nil, nil, NULL,
-                    @"OS reported error code %08x", kr);
+        NSAlert *alert = [[NSAlert alloc] init];
+        alert.messageText = @"Device reset failed";
+        alert.informativeText = [NSString stringWithFormat:@"OS reported error code %08x", kernelReturn];
+        [alert beginSheetModalForWindow:[NSApp mainWindow] completionHandler:
+            ^(NSModalResponse returnCode)
+            {
+
+            }];
     }
 
-    kr = (*dev)->USBDeviceReEnumerate(dev, 0);
-    if (kr)
+    kernelReturn = (*dev)->USBDeviceReEnumerate(dev, 0);
+    if (kernelReturn)
     {
-        NSBeginCriticalAlertSheet(@"USBDeviceReEnumerate failed",
-                    @"Oh, well.",
-                    nil, nil,
-                    [NSApp mainWindow],
-                    nil, nil, nil, NULL,
-                    @"OS reported error code %08x", kr);
+        NSAlert *alert = [[NSAlert alloc] init];
+        alert.messageText = @"USBDeviceReEnumerate failed";
+        alert.informativeText = [NSString stringWithFormat:@"OS reported error code %08x", kernelReturn];
+        [alert beginSheetModalForWindow:[NSApp mainWindow] completionHandler:
+            ^(NSModalResponse returnCode)
+            {
+
+            }];
     }
 }
 
