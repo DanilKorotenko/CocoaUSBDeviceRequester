@@ -330,7 +330,6 @@ staticDeviceRemoved (void *refCon, io_iterator_t iterator)
 - (void)makeRequestToDevice:(IOUSBDeviceInterface **)dev
        directionHostToDevice:(BOOL)directionHostToDevice
 {
-    HRESULT kr;
     IOUSBDevRequest req;
     UInt count;
     unsigned char tmp[1024];
@@ -356,9 +355,8 @@ staticDeviceRemoved (void *refCon, io_iterator_t iterator)
     req.wLength = EndianS16_NtoL(count);
     req.pData = tmp;
 
-    kr = (*dev)->DeviceRequest(dev, &req);
-
-    if (kr)
+    HRESULT kernelReturn = (*dev)->DeviceRequest(dev, &req);
+    if (kernelReturn)
     {
         NSAlert *alert = [[NSAlert alloc] init];
         alert.messageText = @"Request failed";
