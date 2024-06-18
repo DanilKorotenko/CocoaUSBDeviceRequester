@@ -86,63 +86,63 @@ staticDeviceRemoved (void *refCon, io_iterator_t iterator)
 
 #pragma mark ######### hotplug callbacks #########
 
-- (void) deviceAdded: (io_iterator_t) iterator
+- (void)deviceAdded:(io_iterator_t)iterator
 {
-	io_service_t		serviceObject;
-	IOCFPlugInInterface	**plugInInterface = NULL;
-	IOUSBDeviceInterface	**dev = NULL;
-	SInt32			score;
-	kern_return_t		kr;
-	HRESULT			result;
-	CFMutableDictionaryRef	entryProperties = NULL;
+    io_service_t            serviceObject;
+    IOCFPlugInInterface     **plugInInterface = NULL;
+    IOUSBDeviceInterface    **dev = NULL;
+    SInt32                  score;
+    kern_return_t           kr;
+    HRESULT                 result;
+    CFMutableDictionaryRef  entryProperties = NULL;
 
-	while ((serviceObject = IOIteratorNext(iterator))) {
-		printf("%s(): device added %d.\n", __func__, (int) serviceObject);
-		IORegistryEntryCreateCFProperties(serviceObject, &entryProperties, NULL, 0);
+    while ((serviceObject = IOIteratorNext(iterator)))
+    {
+        printf("%s(): device added %d.\n", __func__, (int) serviceObject);
+        IORegistryEntryCreateCFProperties(serviceObject, &entryProperties, NULL, 0);
 
-		kr = IOCreatePlugInInterfaceForService(serviceObject,
-						       kIOUSBDeviceUserClientTypeID, kIOCFPlugInInterfaceID,
-						       &plugInInterface, &score);
+        kr = IOCreatePlugInInterfaceForService(serviceObject,
+                            kIOUSBDeviceUserClientTypeID, kIOCFPlugInInterfaceID,
+                            &plugInInterface, &score);
 
-		if ((kr != kIOReturnSuccess) || !plugInInterface) {
-			printf("%s(): Unable to create a plug-in (%08x)\n", __func__, kr);
-			continue;
-		}
+        if ((kr != kIOReturnSuccess) || !plugInInterface)
+        {
+            printf("%s(): Unable to create a plug-in (%08x)\n", __func__, kr);
+            continue;
+        }
 
-		// create the device interface
-		result = (*plugInInterface)->QueryInterface(plugInInterface,
-							    CFUUIDGetUUIDBytes(kIOUSBDeviceInterfaceID),
-							    (LPVOID *)&dev);
+        // create the device interface
+        result = (*plugInInterface)->QueryInterface(plugInInterface,
+                                CFUUIDGetUUIDBytes(kIOUSBDeviceInterfaceID),
+                                (LPVOID *)&dev);
 
-		// don’t need the intermediate plug-in after device interface is created
-		(*plugInInterface)->Release(plugInInterface);
+        // don’t need the intermediate plug-in after device interface is created
+        (*plugInInterface)->Release(plugInInterface);
 
-		if (result || !dev) {
-			printf("%s(): Couldn’t create a device interface (%08x)\n", __func__, (int) result);
-			continue;
-		}
+        if (result || !dev)
+        {
+            printf("%s(): Couldn’t create a device interface (%08x)\n", __func__, (int) result);
+            continue;
+        }
 
-		NSMutableDictionary *dict = [[NSMutableDictionary alloc] initWithCapacity: 0];
+        NSMutableDictionary *dict = [[NSMutableDictionary alloc] initWithCapacity: 0];
 
-		UInt16 vendorID, productID;
-		(*dev)->GetDeviceVendor(dev, &vendorID);
-		(*dev)->GetDeviceProduct(dev, &productID);
-		NSString *name = (NSString *) CFDictionaryGetValue(entryProperties, CFSTR(kUSBProductString));
-		if (!name)
-			continue;
-		
-		printf(" *dev = %p\n", *dev);
+        UInt16 vendorID, productID;
+        (*dev)->GetDeviceVendor(dev, &vendorID);
+        (*dev)->GetDeviceProduct(dev, &productID);
+        NSString *name = (NSString *) CFDictionaryGetValue(entryProperties, CFSTR(kUSBProductString));
+        if (!name)
+        {
+            continue;
+        }
 
-		[dict setObject: [NSString stringWithFormat: @"0x%04x", vendorID]
-			 forKey: @"VID"];
-		[dict setObject: [NSString stringWithFormat: @"0x%04x", productID]
-			 forKey: @"PID"];
-		[dict setObject: [NSString stringWithString: name]
-			 forKey: @"name"];
-		[dict setObject: [NSValue valueWithPointer: dev]
-			 forKey: @"dev"];
-		[dict setObject: [NSNumber numberWithInt: serviceObject]
-			 forKey: @"service"];
+        printf(" *dev = %p\n", *dev);
+
+        [dict setObject: [NSString stringWithFormat: @"0x%04x", vendorID] forKey: @"VID"];
+        [dict setObject: [NSString stringWithFormat: @"0x%04x", productID] forKey: @"PID"];
+        [dict setObject: [NSString stringWithString: name] forKey: @"name"];
+        [dict setObject: [NSValue valueWithPointer: dev] forKey: @"dev"];
+        [dict setObject: [NSNumber numberWithInt: serviceObject] forKey: @"service"];
 
         [self.deviceArray addObject: dict];
     }
@@ -355,7 +355,7 @@ staticDeviceRemoved (void *refCon, io_iterator_t iterator)
     req.wLength = EndianS16_NtoL(count);
     req.pData = tmp;
 
-    HRESULT kernelReturn = (*dev)->DeviceRequest(dev, &req);
+    IOReturn kernelReturn = (*dev)->DeviceRequest(dev, &req);
     if (kernelReturn)
     {
         NSAlert *alert = [[NSAlert alloc] init];
